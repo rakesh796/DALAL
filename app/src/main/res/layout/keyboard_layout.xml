@@ -1,34 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="match_parent"
+    android:layout_height="wrap_content"
     android:background="@color/keyboard_background">
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="wrap_content"
         android:orientation="vertical">
 
         <!-- Mode Label -->
         <TextView
             android:id="@+id/mode_label"
             android:layout_width="match_parent"
-            android:layout_height="60dp"
+            android:layout_height="40dp"
             android:gravity="center"
-            android:text="Number Mode"
+            android:text="@string/number_mode"
             android:textColor="@color/text_muted"
-            android:textSize="18sp"
+            android:textSize="14sp"
             android:textStyle="bold" />
 
-        <!-- Keyboard View -->
-        <KeyboardView
+        <!-- Keys are built in code (ScalperKeyboardService) -->
+        <FrameLayout
             android:id="@+id/keyboard_view"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:background="@color/keyboard_background"
-            android:keyBackground="@drawable/key_background"
-            android:keyTextColor="@color/text_primary"
-            android:keyTextSize="28sp" />
+            android:layout_height="wrap_content"
+            android:background="@color/keyboard_background" />
 
     </LinearLayout>
 

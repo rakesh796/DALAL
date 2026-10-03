@@ -74,64 +74,67 @@ class DashboardOverlay(private val context: Context) {
     private var tradesLeft = 2
     private var currentLTPText = "LTP 211.80"
     private var currentSession = "OPEN · 5h 48m left"
-    private var lastUpdateTime = System.currentTimeMillis()
     private var showLossPauseWarning = false
+
+    // Render-thread state
+    @Volatile private var running = true
+    @Volatile private var paused = false
+    @Volatile private var dirty = true
+    private var lastDrawMs = 0L
 
     fun getView(): FrameLayout {
         val container = FrameLayout(context)
         surfaceView = SurfaceView(context)
         container.addView(surfaceView)
 
+        renderThread.isDaemon = true
         renderThread.start()
 
         return container
     }
 
     fun resume() {
-        // Start render loop
+        paused = false
+        dirty = true
     }
 
     fun pause() {
-        // Pause render loop
+        paused = true
     }
 
     fun destroy() {
-        // Cleanup
+        running = false
     }
 
+    /**
+     * Redraws only when data changed (dirty) or once a second for the clock.
+     * Sleeps when the surface isn't ready, so it never spins the CPU.
+     */
     private fun renderLoop() {
-        var lastFrameTime = System.nanoTime()
-        var frameCount = 0
-        var fps = 60
-
-        while (true) {
-            val frameStartTime = System.nanoTime()
-
+        while (running) {
             try {
-                val canvas = surfaceView.holder.lockCanvas() ?: continue
-
-                // Check if data has changed (selective redraw)
-                val timeSinceLastUpdate = System.currentTimeMillis() - lastUpdateTime
-                if (timeSinceLastUpdate < 50) { // Only redraw every 50ms = 20 FPS max
-                    canvas.drawColor(0xFF080E1E.toInt())
-                    renderDashboard(canvas)
-                    surfaceView.holder.unlockCanvasAndPost(canvas)
+                val holder = surfaceView.holder
+                val now = System.currentTimeMillis()
+                if (!paused && holder.surface.isValid && (dirty || now - lastDrawMs >= 1000)) {
+                    val canvas = holder.lockCanvas()
+                    if (canvas != null) {
+                        try {
+                            canvas.drawColor(0xFF080E1E.toInt())
+                            renderDashboard(canvas)
+                        } finally {
+                            holder.unlockCanvasAndPost(canvas)
+                        }
+                        dirty = false
+                        lastDrawMs = now
+                    }
                 }
-
-                // Frame rate calculation
-                frameCount++
-                val currentTime = System.nanoTime()
-                if (currentTime - lastFrameTime >= 1_000_000_000) { // 1 second
-                    fps = frameCount
-                    frameCount = 0
-                    lastFrameTime = currentTime
-                }
-
-                // 120Hz target: ~8.3ms per frame
+                // ~120Hz poll for changes; drawing itself only happens when needed
                 Thread.sleep(8)
-
+            } catch (e: InterruptedException) {
+                return
             } catch (e: Exception) {
                 e.printStackTrace()
+                try { Thread.sleep(100) } catch (ie: InterruptedException) { return }
             }
         }
     }
@@ -185,66 +188,107 @@ class DashboardOverlay(private val context: Context) {
         livePrice = price
         priceChange = change
         currentLTPText = "LTP ${String.format("%.2f", price)}"
-        lastUpdateTime = System.currentTimeMillis()
+        dirty = true
     }
 
     fun updateLossIndicator(loss: Double) {
         dailyLoss = loss
-        lastUpdateTime = System.currentTimeMillis()
+        dirty = true
     }
 
     fun updateTradesLeft(count: Int) {
         tradesLeft = count
-        lastUpdateTime = System.currentTimeMillis()
+        dirty = true
     }
 
     fun updateSessionStatus(text: String) {
         currentSession = text
-        lastUpdateTime = System.currentTimeMillis()
+        dirty = true
     }
 
     fun showLossPauseWarning() {
         showLossPauseWarning = true
-        lastUpdateTime = System.currentTimeMillis()
+        dirty = true
     }
 
     fun hideLossPauseWarning() {
         showLossPauseWarning = false
-        lastUpdateTime = System.currentTimeMillis()
+        dirty = true
     }
 }
 
 /**
- * App Drawer - Swipe-up drawer showing installed apps
+ * App Drawer - full-screen scrollable list of installed apps. Tap to launch.
  */
 class AppDrawer(private val context: Context) {
 
     private var apps = emptyList<com.dalal.scalp.data.InstalledApp>()
-    private var isVisible = false
+    private var drawerView: android.view.View? = null
 
     fun setApps(appList: List<com.dalal.scalp.data.InstalledApp>) {
-        apps = appList.sortedByDescending { it.usageCount }
+        apps = appList.sortedBy { it.appName.lowercase() }
     }
 
-    fun show(parent: FrameLayout, activity: android.app.Activity): FrameLayout {
-        isVisible = true
+    fun show(parent: FrameLayout, activity: android.app.Activity): android.view.View {
+        drawerView?.let { parent.removeView(it) }
+        val density = context.resources.displayMetrics.density
 
-        val drawerLayout = FrameLayout(context).apply {
+        val list = android.widget.LinearLayout(context).apply {
+            orientation = android.widget.LinearLayout.VERTICAL
+            setPadding((24 * density).toInt(), (48 * density).toInt(), (24 * density).toInt(), (24 * density).toInt())
+        }
+
+        if (apps.isEmpty()) {
+            list.addView(android.widget.TextView(context).apply {
+                text = "Loading apps…"
+                setTextColor(0xFF8B96AA.toInt())
+                textSize = 16f
+            })
+        }
+
+        for (app in apps) {
+            val row = android.widget.LinearLayout(context).apply {
+                orientation = android.widget.LinearLayout.HORIZONTAL
+                gravity = android.view.Gravity.CENTER_VERTICAL
+                setPadding(0, (10 * density).toInt(), 0, (10 * density).toInt())
+                isClickable = true
+                setOnClickListener {
+                    val launch = context.packageManager.getLaunchIntentForPackage(app.packageName)
+                    if (launch != null) {
+                        activity.startActivity(launch)
+                    }
+                }
+            }
+            val iconSize = (40 * density).toInt()
+            row.addView(android.widget.ImageView(context).apply {
+                setImageDrawable(app.icon)
+                layoutParams = android.widget.LinearLayout.LayoutParams(iconSize, iconSize)
+            })
+            row.addView(android.widget.TextView(context).apply {
+                text = app.appName
+                setTextColor(0xFFE6EDF3.toInt())
+                textSize = 17f
+                setPadding((16 * density).toInt(), 0, 0, 0)
+            })
+            list.addView(row)
+        }
+
+        val scroll = android.widget.ScrollView(context).apply {
             layoutParams = FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT,
                 FrameLayout.LayoutParams.MATCH_PARENT
             )
             setBackgroundColor(0xFF080E1E.toInt())
+            addView(list)
         }
 
-        // TODO: Implement smooth slide animation
-        parent.addView(drawerLayout)
-
-        return drawerLayout
+        parent.addView(scroll)
+        drawerView = scroll
+        return scroll
     }
 
-    fun hide() {
-        isVisible = false
-        // TODO: Implement slide-out animation
+    fun hide(parent: FrameLayout) {
+        drawerView?.let { parent.removeView(it) }
+        drawerView = null
     }
 }

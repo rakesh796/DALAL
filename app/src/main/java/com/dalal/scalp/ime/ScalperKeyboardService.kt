@@ -1,8 +1,6 @@
 package com.dalal.scalp.ime
 
 import android.inputmethodservice.InputMethodService
-import android.inputmethodservice.Keyboard
-import android.inputmethodservice.KeyboardView
 import android.view.KeyEvent
 import android.view.LayoutInflater
 import android.view.View
@@ -26,9 +24,9 @@ import com.dalal.scalp.R
  */
 class ScalperKeyboardService : InputMethodService() {
 
-    private lateinit var keyboard: KeyboardView
+    private lateinit var keyboard: FrameLayout
     private lateinit var modeLabel: TextView
-    private var currentMode: KeyboardMode = KeyboardMode.NUMBERS
+    private var currentMode: KeyboardMode? = null
 
     private val numberRows = listOf(
         listOf("1", "2", "3"),
@@ -74,8 +72,11 @@ class ScalperKeyboardService : InputMethodService() {
 
     override fun onStartInput(attribute: EditorInfo?, restarting: Boolean) {
         super.onStartInput(attribute, restarting)
+        // onStartInput can run before the keyboard view exists
+        if (!::keyboard.isInitialized) return
         // Detect context and switch mode if needed
-        if (attribute?.inputType == EditorInfo.TYPE_CLASS_TEXT) {
+        val inputClass = (attribute?.inputType ?: 0) and EditorInfo.TYPE_MASK_CLASS
+        if (inputClass == EditorInfo.TYPE_CLASS_TEXT) {
             switchToLetters()
         } else {
             switchToNumbers()
@@ -158,6 +159,24 @@ class ScalperKeyboardService : InputMethodService() {
             grid.addView(rowLayout)
         }
 
+        // Bottom row: 123 / DALAL / SPACE / GO
+        val sideRow = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            layoutParams = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                140
+            )
+        }
+        for (label in letterSideButtons) {
+            val weight = if (label == "SPACE") 3f else 1f
+            sideRow.addView(Button(this).apply {
+                text = label
+                layoutParams = LinearLayout.LayoutParams(0, 140, weight)
+                setOnClickListener { onSideButtonPressed(label) }
+            })
+        }
+        grid.addView(sideRow)
+
         container.addView(grid)
         keyboard.addView(container)
     }
@@ -234,17 +253,5 @@ class ScalperKeyboardService : InputMethodService() {
         inputConnection.sendKeyEvent(
             KeyEvent(KeyEvent.ACTION_UP, keyCode)
         )
-    }
-
-    override fun onKey(primaryCode: Int, keyCodes: IntArray?) {
-        // Handle hardware keyboard input
-    }
-
-    override fun onPress(primaryCode: Int) {
-        // Haptic feedback on key press
-    }
-
-    override fun onRelease(primaryCode: Int) {
-        // Haptic release
     }
 }

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Insert
+import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Room
 import androidx.room.RoomDatabase
@@ -91,7 +92,7 @@ interface StatsDao {
 
 @Dao
 interface LossLimitDao {
-    @Insert
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertLossLimit(entry: LossLimitEntry)
 
     @Update
@@ -137,7 +138,8 @@ class AppRepository(context: Context) {
             killSwitchEngaged = true,
             dailyLimitBreakTime = System.currentTimeMillis()
         )
-        lossLimitDao.updateLossLimit(entry)
+        // Upsert: today's row may not exist yet, so a plain update would do nothing
+        lossLimitDao.insertLossLimit(entry)
     }
 
     // Daily loss calculation

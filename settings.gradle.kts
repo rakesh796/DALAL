@@ -15,3 +15,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "DALAL"
+include(":app")

@@ -25,7 +25,9 @@ import com.dalal.scalp.service.LiveDataService
 import com.dalal.scalp.service.LossLimitEnforcerService
 import com.dalal.scalp.ui.AppDrawer
 import com.dalal.scalp.ui.DashboardOverlay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * DALAL Launcher - Main entry point
@@ -78,12 +80,12 @@ class LauncherActivity : AppCompatActivity() {
         // Set up gesture detection for swipe drawer
         val gestureListener = object : GestureDetector.SimpleOnGestureListener() {
             override fun onScroll(
-                e1: MotionEvent,
+                e1: MotionEvent?,
                 e2: MotionEvent,
                 distanceX: Float,
                 distanceY: Float
             ): Boolean {
-                if (e1.x > 100) { // Avoid edge gesture navigation
+                if (e1 != null && e1.x > 100) { // Avoid edge gesture navigation
                     if (distanceX > 50 && !isDrawerOpen) {
                         // Swipe left - open drawer
                         openAppDrawer()
@@ -119,6 +121,14 @@ class LauncherActivity : AppCompatActivity() {
                 }
             }
         })
+
+        // Android 13+: loss-limit alerts are invisible without this permission
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) !=
+            android.content.pm.PackageManager.PERMISSION_GRANTED
+        ) {
+            requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS), 1)
+        }
 
         // Start background services
         startLiveDataService()
@@ -179,13 +189,13 @@ class LauncherActivity : AppCompatActivity() {
 
     private fun openAppDrawer() {
         isDrawerOpen = true
-        val drawerView = appDrawer.show(container, this)
+        appDrawer.show(container, this)
         vibrate(10) // Haptic feedback
     }
 
     private fun closeAppDrawer() {
         isDrawerOpen = false
-        appDrawer.hide()
+        appDrawer.hide(container)
         vibrate(5)
     }
 
@@ -201,20 +211,22 @@ class LauncherActivity : AppCompatActivity() {
 
     private fun loadAppList() {
         lifecycleScope.launch {
-            val apps = repository.getAllInstalledApps()
+            val apps = withContext(Dispatchers.IO) { repository.getAllInstalledApps() }
             appDrawer.setApps(apps)
         }
     }
 
     private fun monitorLossLimit() {
         lifecycleScope.launch {
-            repository.dailyLossFlow().collect { loss ->
+            repository.dailyLossFlow().collect { pnl ->
+                // Net P&L is negative when losing; loss is shown as a positive amount
+                val loss = (-(pnl ?: 0.0)).coerceAtLeast(0.0)
                 dailyLoss = loss
                 dashboardOverlay.updateLossIndicator(loss)
 
-                if (loss >= 2000.0) {
+                if (loss >= 2000.0 && !isLossPaused) {
                     isLossPaused = true
-                    vibrate(listOf(0, 50, 30, 100, 30, 100)) // Alert pattern
+                    vibrate(listOf(0L, 50L, 30L, 100L, 30L, 100L)) // Alert pattern
                     dashboardOverlay.showLossPauseWarning()
                 }
             }

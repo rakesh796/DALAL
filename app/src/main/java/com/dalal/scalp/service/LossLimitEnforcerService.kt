@@ -19,6 +19,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 
@@ -110,15 +111,9 @@ class LossLimitEnforcerService : Service() {
             }
 
             // Get today's P&L from database
-            var totalLoss = 0.0
-            repository.dailyLossFlow().collect { loss ->
-                totalLoss = loss ?: 0.0
-                if (totalLoss < 0) {
-                    totalLoss = kotlin.math.abs(totalLoss)
-                }
-            }
-
-            currentDayLoss = totalLoss
+            // first() takes the current value; collect{} on a Room Flow never returns
+            val pnl = repository.dailyLossFlow().first() ?: 0.0
+            currentDayLoss = (-pnl).coerceAtLeast(0.0)
 
             // Check if limit breached
             if (currentDayLoss >= DAILY_LOSS_LIMIT) {
@@ -191,7 +186,7 @@ class LossLimitEnforcerService : Service() {
             vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
         } else {
             @Suppress("DEPRECATION")
-            vibrator.vibrate(pattern)
+            vibrator.vibrate(pattern, -1)
         }
 
         // Critical notification
@@ -254,6 +249,7 @@ class LossLimitEnforcerService : Service() {
             .setContentText("Monitoring...")
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
     }
@@ -264,6 +260,7 @@ class LossLimitEnforcerService : Service() {
             .setContentText(text)
             .setSmallIcon(R.drawable.ic_notification)
             .setOngoing(true)
+            .setOnlyAlertOnce(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
 
