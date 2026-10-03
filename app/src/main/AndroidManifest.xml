@@ -1,26 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
 
-    <!-- Network permissions -->
+    <!-- Load your dashboard page from the Termux helper on 127.0.0.1 -->
     <uses-permission android:name="android.permission.INTERNET" />
-    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
-
-    <!-- Vibration -->
+    <!-- Launcher: list every installed app -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"
+        tools:ignore="QueryAllPackagesPermission" />
+    <!-- Recent apps row (you grant it in Settings → Usage access) -->
+    <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS"
+        tools:ignore="ProtectedPermissions" />
     <uses-permission android:name="android.permission.VIBRATE" />
-
-    <!-- Launcher: list all installed apps -->
-    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
-
-    <!-- Notification -->
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
-
-    <!-- System alert window for bubbles (future) -->
-    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
-
-    <!-- Background services. Android 14+ needs the typed permission or the service crashes -->
-    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <application
         android:allowBackup="true"
@@ -28,14 +18,22 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:label="@string/app_name"
         android:supportsRtl="true"
+        android:usesCleartextTraffic="true"
+        android:hardwareAccelerated="true"
         android:theme="@style/Theme.DALAL">
 
-        <!-- Main Launcher Activity -->
+        <!-- Home screen (Nova-style launcher) -->
         <activity
             android:name=".LauncherActivity"
             android:exported="true"
             android:launchMode="singleTask"
+            android:stateNotNeeded="true"
+            android:clearTaskOnLaunch="true"
+            android:excludeFromRecents="true"
+            android:resumeWhilePausing="true"
             android:screenOrientation="portrait"
+            android:windowSoftInputMode="adjustPan"
+            android:configChanges="orientation|screenSize|screenLayout|keyboardHidden|keyboard|navigation|uiMode|density|fontScale"
             android:theme="@style/Theme.DALAL">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -45,7 +43,14 @@
             </intent-filter>
         </activity>
 
-        <!-- Custom Input Method (Keyboard) -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:label="DALAL settings"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.DALAL" />
+
+        <!-- Optional DALAL Scalper keyboard (minimal version) -->
         <service
             android:name=".ime.ScalperKeyboardService"
             android:exported="true"
@@ -58,24 +63,6 @@
                 android:name="android.view.im"
                 android:resource="@xml/method" />
         </service>
-
-        <!-- Live Data Service (connects to Termux helper) -->
-        <service
-            android:name=".service.LiveDataService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
-
-        <!-- Loss Limit Enforcer Service -->
-        <service
-            android:name=".service.LossLimitEnforcerService"
-            android:exported="false"
-            android:foregroundServiceType="dataSync" />
-
-        <!--
-            Not built yet (see docs/IMPLEMENTATION_STATUS.md), add back when the classes exist:
-            DashboardActivity, OrderFormActivity, JournalActivity, SettingsActivity,
-            KiteLoginActivity, bubble.PriceBubbleService, receiver.BootReceiver, FileProvider
-        -->
 
     </application>
 

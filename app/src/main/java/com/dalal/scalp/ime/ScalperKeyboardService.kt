@@ -1,5 +1,6 @@
 package com.dalal.scalp.ime
 
+import android.content.ClipboardManager
 import android.inputmethodservice.InputMethodService
 import android.view.KeyEvent
 import android.view.LayoutInflater
@@ -36,7 +37,7 @@ class ScalperKeyboardService : InputMethodService() {
     )
 
     private val numberSideButtons = listOf(
-        "LTP",      // Paste last traded price
+        "PASTE",    // Paste copied price/text
         "CLR",      // Clear field
         "ABC",      // Switch to letter mode
         "DONE"      // Submit
@@ -206,9 +207,11 @@ class ScalperKeyboardService : InputMethodService() {
         val inputConnection = currentInputConnection ?: return
 
         when (button) {
-            "LTP" -> {
-                // Paste last traded price from live data
-                inputConnection.commitText("211.80", 1) // TODO: Get actual LTP
+            "PASTE" -> {
+                // Paste what you copied (e.g. a price from your dashboard)
+                val cm = getSystemService(ClipboardManager::class.java)
+                val text = cm?.primaryClip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(this)?.toString()
+                if (!text.isNullOrBlank()) inputConnection.commitText(text.trim(), 1)
             }
             "CLR" -> {
                 // Clear entire field
