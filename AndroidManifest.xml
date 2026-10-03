@@ -1,0 +1,135 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.dalal.scalp">
+
+    <!-- Network permissions -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Vibration -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+
+    <!-- Launcher permissions -->
+    <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" />
+    <uses-permission android:name="android.permission.GET_PACKAGE_SIZE" />
+
+    <!-- Keyboard (IME) permissions -->
+    <uses-permission android:name="android.permission.BIND_INPUT_METHOD" />
+
+    <!-- Notification -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
+    <!-- System alert window for bubbles -->
+    <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
+
+    <!-- Background services -->
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+
+    <application
+        android:allowBackup="true"
+        android:dataExtractionRules="@xml/data_extraction_rules"
+        android:fullBackupContent="@xml/backup_rules"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:supportsRtl="true"
+        android:theme="@style/Theme.DALAL">
+
+        <!-- Main Launcher Activity -->
+        <activity
+            android:name=".LauncherActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Black.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+                <category android:name="android.intent.category.HOME" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
+        <!-- Dashboard Activity (full screen with WebView) -->
+        <activity
+            android:name=".DashboardActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DALAL" />
+
+        <!-- Order Form Activity -->
+        <activity
+            android:name=".OrderFormActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DALAL" />
+
+        <!-- Journal Entry Activity -->
+        <activity
+            android:name=".JournalActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DALAL" />
+
+        <!-- Settings Activity -->
+        <activity
+            android:name=".SettingsActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DALAL" />
+
+        <!-- Kite Login Activity -->
+        <activity
+            android:name=".KiteLoginActivity"
+            android:exported="false"
+            android:theme="@style/Theme.DALAL" />
+
+        <!-- Custom Input Method (Keyboard) -->
+        <service
+            android:name=".ime.ScalperKeyboardService"
+            android:exported="true"
+            android:permission="android.permission.BIND_INPUT_METHOD">
+            <intent-filter>
+                <action android:name="android.view.InputMethod" />
+            </intent-filter>
+            <meta-data
+                android:name="android.inputmethod.InputMethodSubtypeArray"
+                android:resource="@array/keyboard_subtypes" />
+        </service>
+
+        <!-- Live Data Service (connects to Termux helper) -->
+        <service
+            android:name=".service.LiveDataService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Loss Limit Enforcer Service -->
+        <service
+            android:name=".service.LossLimitEnforcerService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Bubble Service for price/timer display -->
+        <service
+            android:name=".bubble.PriceBubbleService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <!-- Boot Receiver -->
+        <receiver
+            android:name=".receiver.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
+
+        <!-- File provider for logs/exports -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="com.dalal.scalp.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
+
+    </application>
+
+</manifest>

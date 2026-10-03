@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Midnight Theme -->
+    <color name="bg">#080E1E</color>
+    <color name="panel">#111A30</color>
+    <color name="panel_light">#182A3E</color>
+    <color name="line">#283450</color>
+
+    <!-- Text -->
+    <color name="text_primary">#E6EDF3</color>
+    <color name="text_muted">#8B96AA</color>
+    <color name="text_dim">#5A646C</color>
+
+    <!-- Accent Colors -->
+    <color name="green">#34D399</color>
+    <color name="red">#F85C66</color>
+    <color name="amber">#F4BE3C</color>
+    <color name="orange">#F0783E</color>
+    <color name="blue">#60A5FA</color>
+    <color name="purple">#A371F7</color>
+    <color name="cyan">#2DD4BF</color>
+
+    <!-- Keyboard -->
+    <color name="keyboard_background">@color/panel</color>
+    <color name="key_bg">@color/panel_light</color>
+    <color name="key_text">@color/text_primary</color>
+
+    <!-- Transparent overlays -->
+    <color name="overlay_dark">#00000080</color>
+    <color name="overlay_light">#FFFFFF20</color>
+</resources>
