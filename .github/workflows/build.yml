@@ -1,4 +1,4 @@
-name: Build APK
+﻿name: Build APK
 
 on:
   push:
@@ -25,6 +25,9 @@ jobs:
 
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
+        with:
+          api-level: 35
+          ndk-version: 25.1.8937393
 
       - name: Grant execute permission to gradlew
         run: chmod +x gradlew
